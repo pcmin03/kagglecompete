@@ -5,6 +5,7 @@ import segmentation_models_pytorch as smp
 from torch.autograd import Variable
 
 from .my_network import *  
+from .pretrain_model import *
 def dont_train(net):
     '''
     set training parameters to false.
@@ -29,19 +30,19 @@ def init_model(args,device):
         gen = pretrain_unet(3,5).to(device)
 
     elif args.modelname =='newunet':
-        gen = pretrain_unet(1,4,args.activation).to(device)
+        gen = pretrain_unet(1,args.out_class,args.activation).to(device)
     
     elif args.modelname =='newunet_last':
-        gen = pretrain_unet(1,4,args.activation).to(device)
+        gen = pretrain_unet(1,args.out_class,args.activation).to(device)
     
     elif args.modelname =='unet_final':
-        gen = pretrain_unet(1,4,args.activation).to(device)
+        gen = pretrain_unet(1,args.out_class,args.activation).to(device)
 
     elif args.modelname =='unet_test':
-        gen = pretrain_unet(1,4,args.activation).to(device)
+        gen = pretrain_unet(1,args.out_class,args.activation).to(device)
             
     elif args.modelname =='ResidualUNet3D':
-        gen = ResidualUNet3D(1,4,final_sigmoid=args.activation).to(device)
+        gen = ResidualUNet3D(1,args.out_class,final_sigmoid=args.activation).to(device)
         
             
     elif args.modelname =='multinewunet':
@@ -51,10 +52,10 @@ def init_model(args,device):
         gen = pretrain_multi_unet(1,1,args.activation).to(device)
     
     elif args.modelname =='newunet_compare_new':    
-        gen = pretrain_unet(1,4,args.activation).to(device)
+        gen = pretrain_unet(1,args.out_class,args.activation).to(device)
         
     elif args.modelname =='newunet_compare_new2':    
-        gen = pretrain_unet(1,4,args.activation).to(device)
+        gen = pretrain_unet(1,args.out_class,args.activation).to(device)
 
     return gen
         

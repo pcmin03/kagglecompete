@@ -69,14 +69,6 @@ def main(args):
 
 if __name__ == '__main__': 
     args = my_config()
-    print(args.ADCE,'ADCE')
-    print(args.RECONGAU,'RECONGAU')
-    print(args.RECON,'RECON')
-    print('==============================')
-    print(args.RCE,'RCE')
-    print(args.NCE,'NCE')
-    print(args.NCDICE,'NCDICE')
-    print(args.BCE,'BCE')
     main(args)
 
 

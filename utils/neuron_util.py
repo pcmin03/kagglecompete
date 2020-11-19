@@ -33,7 +33,7 @@ def make_path(args):
     if not os.path.exists(modelsave_dir):
         print(f' Make_save_Dir : {modelsave_dir}')
         os.makedirs(modelsave_dir)
-    valdation_dir = str(args.knum)+str(args.activation)+'_'+str(args.patchsize)+'_'
+    valdation_dir = str(args.knum)+'_'
     if args.oversample == True:
         valdation_dir += 'oversample_'
         
@@ -45,6 +45,9 @@ def EROSION(image,sigma=6):
     print(image.shape)
     return image
 
+def changecolor(predict,nc=4):
+    # images = skimage.color.gray2rgb(images)
+    return skimage.color.label2rgb(predict)
 
 def decode_segmap(images, nc=4,name='full_4'):
 

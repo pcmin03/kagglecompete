@@ -430,36 +430,6 @@ class gabor_test(torch.nn.Module):
 
 ######################################################################
 
-class NCDICEloss(torch.nn.Module):
-    
-    def __init__(self,r=1.5):
-        super(NCDICEloss,self).__init__()
-        self.r = r
-        self.treshold_value = 0.3
-    # def dice
-    # def dice_coef(self,y_true, y_pred):
-    #     y_true_f = y_true.contiguous().view(y_true.shape[0], -1)
-    #     y_pred_f = y_pred.contiguous().view(y_pred.shape[0], -1)
-    #     intersection = torch.sum(torch.pow(torch.abs(y_true_f - y_pred_f),self.r),dim=1)
-    #     # print(y_pred_f.shape,y_true_f.shape)
-    #     return intersection/(torch.sum(y_true_f.pow(2),dim=1) + torch.sum(y_pred_f.pow(2),dim=1) + 1e-5)
-
-    def forward(self, feature_output,labels,mask_inputs):
-        zero_img = torch.zeros_like(mask_inputs)
-        one_img = torch.ones_like(mask_inputs)
-        mask_img = torch.where(mask_inputs>self.treshold_value,one_img,zero_img)
-        back_gt = torch.where(mask_inputs>self.treshold_value,zero_img,one_img)
-
-        labels[:,0:1] = back_gt
-
-        dice = BinaryDiceLoss()
-        total_loss= 0
-        for i in [0,1,2,3]:
-            # if i != self.ignore_index:
-            dice_loss = dice( feature_output[:, i],labels[:, i])
-            total_loss += dice_loss
-        # print(result)
-        return total_loss/labels.shape[1]
 
 class BinaryDiceLoss(nn.Module):
     def __init__(self, smooth=1e-5, p=1.5, reduction='mean'):

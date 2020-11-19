@@ -12,7 +12,7 @@ from torch import Tensor
 #custom set#
 
 from utils.matrix import Evaluator, AverageMeter
-from utils.neuron_util import decode_segmap
+from utils.neuron_util import decode_segmap,changecolor
 import torch.autograd as autograd
 
 class Trainer():
@@ -50,7 +50,6 @@ class Trainer():
         for i, batch in enumerate(tqdm(self.Mydataset[phase])):
 
             self._input, self._label = Variable(batch[0]).to(self.device), Variable(batch[1]).to(self.device)
-            mask_ = Variable(batch[2]).to(self.device)         
             
             self.optimizer.zero_grad()
             torch.autograd.set_detect_anomaly(True)
@@ -59,15 +58,14 @@ class Trainer():
             with torch.set_grad_enabled(phase == 'train'):
 
                 self.predict,self.prediction_map=self.model(self._input)
-
-                loss = self.loss_list['mainloss'](self.predict,self._label,mask_)
                 
+                loss = self.loss_list['mainloss'](self.predict,self._label.long())
                 self.t_loss.update(loss.detach().item(),self._input.size(0))          
 
-                if self.args.RECON:
-                    recon_loss,self.sum_output,self.back_output = self.loss_list['reconloss'](self.predict,mask_,self._label,self.args.activation)
-                    self.recon_loss.update(recon_loss.detach().item(),self._input.size(0))
-                    loss += recon_loss  
+                # if self.args.RECON:
+                #     recon_loss,self.sum_output,self.back_output = self.loss_list['reconloss'](self.predict,mask_,self._label,self.args.activation)
+                #     self.recon_loss.update(recon_loss.detach().item(),self._input.size(0))
+                #     loss += recon_loss  
                     
                 # print(recon_loss,CE_loss)
                 if phase == 'train':
@@ -75,8 +73,7 @@ class Trainer():
                     self.optimizer.step()
                     self.scheduler.step()
                 
-            self.evaluator.add_batch(torch.argmax(self._label,dim=1).cpu().numpy(),torch.argmax(self.predict,dim=1).cpu().numpy())
-            
+            self.evaluator.add_batch(self._label.cpu().numpy(),torch.argmax(self.predict,dim=1).cpu().numpy())
             result_dicts = self.evaluator.update()
             #update self.logger
             self.t_loss.reset_dict()
@@ -97,39 +94,30 @@ class Trainer():
     def get_lr(self,optimizer):
         for param_group in optimizer.param_groups:
             return param_group['lr']
-
+            
     def deployresult(self,epoch):
         print(f"label shape : {self._label.shape},featuer shape:,{self.prediction_map.shape},self.predict shape:{self.predict.shape}")
-        print(self.sum_output.shape,self.back_output.shape )
-
-        save_stack_images = {'_label':self._label * 255. ,'_input':self._input * 65535,
-                            'prediction_map':self.prediction_map*65535}
-
-        # self._input = cv2.normalize(self._input,  normalizedImg, 0, 65535 , cv2.NORM_MINMAX)
-        # self._input = cv2.normalize(self._input,  normalizedImg, 0, 65535 , cv2.NORM_MINMAX)
-        # self._input = cv2.normalize(self._input,  normalizedImg, 0, 65535 , cv2.NORM_MINMAX)
-
-        save_stack_images = self.logger.make_stack_image(save_stack_images)
-        pre_body = decode_segmap(torch.argmax(self.predict,dim=1).detach().cpu().numpy())
-        pre_body = np.transpose(pre_body,(0,2,3,1))
-        # pre_body = np.swapaxes(pre_body,0,3)
-        save_stack_images['_label'] = save_stack_images['_label'].astype('uint8')
-        save_stack_images['prediction_map'] = save_stack_images['prediction_map'].astype('uint16')
-        save_stack_images.update({'prediction_result':pre_body.astype('uint8')})
-        # self.make_stack_image(self._label) * 255.
-        # self.make_stack_image(self.prediction_map)
-        # self.make_stack_image(self.predict)
-
-        # self._input = self._input.detach().cpu().numpy()
         
-        # self.prediction_map = self.prediction_map.unsqueeze(2).cpu().numpy()
-        # self.prediction_map = cv2.normalize(self.prediction_map,  normalizedImg, 0, 255 , cv2.NORM_MINMAX)
+        save_stack_images = {'_label':self._label * 255. ,'_input':self._input*65535}
 
-        # print(f"label shape : {v_la.shape},featuer shape:,{self.prediction_map.shape},self.prediction shape:{precision.shape}")
-        # print(f"pre_body shape : {pre_body.shape}")
-
-
-        self.logger.save_images(save_stack_images,epoch)
+        # self._input = cv2.normalize(self._input,  normalizedImg, 0, 65535 , cv2.NORM_MINMAX)
+        # self._input = cv2.normalize(self._input,  normalizedImg, 0, 65535 , cv2.NORM_MINMAX)
+        # self._input = cv2.normalize(self._input,  normalizedImg, 0, 65535 , cv2.NORM_MINMAX)
+        print(save_stack_images['_label'].shape,'save_stack_images')        
+        
+        save_stack_images = self.logger.make_stack_image(save_stack_images)
+        print(save_stack_images['_label'].shape,'save_stack_images') 
+        pre_body = changecolor(torch.argmax(self.predict,dim=1).detach().cpu().numpy()[...,0],nc=self.args.out_class)
+        save_stack_images['_label'] = changecolor(save_stack_images['_label'][0],nc=self.args.out_class)
+        print(save_stack_images['_label'].shape,'save_stack_images')        
+        # print(pre_body.shape)
+        # pre_body = np.transpose(pre_body,(0,2,3,1))
+        # pre_body = np.swapaxes(pre_body,0,3)
+        # save_stack_images['_label'] = save_stack_images['_label'].astype('uint8')
+        # save_stack_images.update({'prediction_result':pre_body.astype('uint8')})
+        
+        # self.logger.save_images(save_stack_images,epoch)
+        self.logger.summary_images(save_stack_images,epoch)
 
     def save_model(self,epoch):
         if  self.evaluator.Class_F1score[3] > self.best_axon_recall :

@@ -36,7 +36,13 @@ class Logger(object):
     def summary_images(self,images_dict,step):
         ### list of image ###
         for i, img in enumerate(images_dict):
-            self.writer.add_image(str(img),images_dict[img],step)
+            if images_dict[img].dtype == 'uint16':
+                normalizedImg = (1024,1024)
+                images_dict[img] = cv2.normalize(images_dict[img],  normalizedImg, 0,255 , cv2.NORM_MINMAX).astype('uint8')
+            if images_dict[img].ndim == 4: 
+                self.writer.add_images(str(img),images_dict[img],step,dataformats='NHWC')
+            elif images_dict[img].ndim == 3:
+                self.writer.add_image(str(img),images_dict[img],step,dataformats='HWC')
 
     def summary_scalars(self,scalar_dict,step,tag='loss',phase='valid'):
         ### list of scaler ###
@@ -83,10 +89,16 @@ class Logger(object):
     def make_stack_image(self,image_dict):
         for i, img in enumerate(image_dict):
             print(image_dict[img].shape,img)
-            image_dict[img] = image_dict[img].detach().cpu().numpy()
-            image_dict[img] = np.transpose(image_dict[img],(1,2,3,0))[...,0:1]
-            # image_dict[img] = np.swapaxes(image_dict[img],0,-1)[...,0:1]
 
+            image_dict[img] = image_dict[img].detach().cpu().numpy()
+            if image_dict[img].ndim == 3:
+                image_dict[img] = np.transpose(image_dict[img],(1,2,0))[...,0:1]
+            elif image_dict[img].ndim == 4:
+                image_dict[img] = np.transpose(image_dict[img],(1,2,3,0))[...,0:1]
+
+            # image_dict[img] = np.swapaxes(image_dict[img],0,-1)[...,0:1]
+            # image_dict['_input'] = cv2.normalize(image_dict['_input'],(768,1024), 0, 65535 , cv2.NORM_MINMAX).astype('uint16')
+        
             print(image_dict[img].shape,img)
         return image_dict 
 

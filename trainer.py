@@ -14,9 +14,14 @@ from torch import Tensor
 from utils.matrix import Evaluator, AverageMeter
 from utils.neuron_util import decode_segmap,changecolor
 import torch.autograd as autograd
+import cv2
+import numpy as np
 
+import torchvision
 class Trainer():
     total_train_iter = 0
+    total_valid_iter = 0
+    
     best_epoch = 0 
     best_axon_recall = 0
     
@@ -66,29 +71,31 @@ class Trainer():
                 #     recon_loss,self.sum_output,self.back_output = self.loss_list['reconloss'](self.predict,mask_,self._label,self.args.activation)
                 #     self.recon_loss.update(recon_loss.detach().item(),self._input.size(0))
                 #     loss += recon_loss  
-                    
-                # print(recon_loss,CE_loss)
+                self.evaluator.add_batch(self._label.cpu().numpy(),torch.argmax(self.predict,dim=1).cpu().numpy())
+                result_dicts = self.evaluator.update()
+                #update self.logger
+                self.t_loss.reset_dict()
+                total_score = self.t_loss.update_dict(result_dicts)
+
                 if phase == 'train':
                     loss.backward()
                     self.optimizer.step()
                     self.scheduler.step()
-                
-            self.evaluator.add_batch(self._label.cpu().numpy(),torch.argmax(self.predict,dim=1).cpu().numpy())
-            result_dicts = self.evaluator.update()
-            #update self.logger
-            self.t_loss.reset_dict()
-            self.t_loss.update_dict(result_dicts)
 
-            self.logger.summary_scalars(self.t_loss.IOU_scalar,self.total_train_iter,'IOU',phase)
-            self.logger.summary_scalars(self.t_loss.precision_scalar,self.total_train_iter,'precision',phase)
-            self.logger.summary_scalars(self.t_loss.recall_scalr,self.total_train_iter,'recall',phase)
-            self.logger.summary_scalars(self.t_loss.F1score_scalar,self.total_train_iter,'F1',phase)
-            self.logger.summary_scalars({'loss':loss.detach().item()},self.total_train_iter,'Losses',phase)
-            self.logger.summary_scalars({'IR':self.get_lr(self.optimizer)},self.total_train_iter,tag='IR',phase=phase)
-            
-            self.total_train_iter += 1
-        
+                    self.logger.list_summary_scalars(total_score,self.total_train_iter,phase)
+                    self.logger.summary_scalars({'loss':loss.detach().item()},self.total_train_iter,'Losses',phase)
+                    self.logger.summary_scalars({'IR':self.get_lr(self.optimizer)},self.total_train_iter,tag='IR',phase=phase)
+                    self.total_train_iter += 1
+                    
+                elif phase == 'valid' or phase == 'test': 
+                    
+                    self.logger.list_summary_scalars(total_score,self.total_valid_iter,phase)
+                    self.logger.summary_scalars({'loss':loss.detach().item()},self.total_valid_iter,'Losses',phase)
+                    self.logger.summary_scalars({'IR':self.get_lr(self.optimizer)},self.total_valid_iter,tag='IR',phase=phase)
+                    self.total_valid_iter += 1
+
         self.logger.print_value(result_dicts,phase)
+
         return result_dicts
     
     def get_lr(self,optimizer):
@@ -98,17 +105,25 @@ class Trainer():
     def deployresult(self,epoch):
         print(f"label shape : {self._label.shape},featuer shape:,{self.prediction_map.shape},self.predict shape:{self.predict.shape}")
         
-        save_stack_images = {'_label':self._label * 255. ,'_input':self._input*65535}
-
-        # self._input = cv2.normalize(self._input,  normalizedImg, 0, 65535 , cv2.NORM_MINMAX)
+        save_stack_images = {'_label':self._label * 255. ,'_input':self._input}
+        
         # self._input = cv2.normalize(self._input,  normalizedImg, 0, 65535 , cv2.NORM_MINMAX)
         # self._input = cv2.normalize(self._input,  normalizedImg, 0, 65535 , cv2.NORM_MINMAX)
         print(save_stack_images['_label'].shape,'save_stack_images')        
         
+        save_stack_images['_input'] = torchvision.utils.make_grid(save_stack_images['_input'])
         save_stack_images = self.logger.make_stack_image(save_stack_images)
+        # save_stack_images['_input'] = (save_stack_images['_input'] * 0.19416974) + (0.31789994)
+        # save_stack_images['_input'] = cv2.normalize(save_stack_images['_input'],(768,1024), 0, 65535 , cv2.NORM_MINMAX)
+        
         print(save_stack_images['_label'].shape,'save_stack_images') 
-        pre_body = changecolor(torch.argmax(self.predict,dim=1).detach().cpu().numpy()[...,0],nc=self.args.out_class)
-        save_stack_images['_label'] = changecolor(save_stack_images['_label'][0],nc=self.args.out_class)
+        print(save_stack_images['_input'].max(),save_stack_images['_input'].min())
+        # save_stack_images['_input'] = cv2.convertScaleAbs(save_stack_images['_input'], alpha=(255.0/65535.0))
+        # print(pre_body.shape,'save_stack_images') 
+        
+        pre_body = changecolor(torch.argmax(self.predict,dim=1).detach().cpu().numpy()[0],nc=self.args.out_class)
+        save_stack_images['_label'] = changecolor(save_stack_images['_label'][...,0],nc=self.args.out_class)
+        save_stack_images.update({'pre_body':pre_body})
         print(save_stack_images['_label'].shape,'save_stack_images')        
         # print(pre_body.shape)
         # pre_body = np.transpose(pre_body,(0,2,3,1))
@@ -152,8 +167,12 @@ class Trainer():
                 self.deployresult(epoch)
                 self.save_model(epoch)
 
-                
-                # self.logger.summary_scalars({'IR':get_lr(optimizerG)},epoch,'IR',phase)
+    def test(self): 
+        print("start testing")
+        self.model.eval()
+        phase = 'test'
+        result_dict = self.train_one_epochs(epoch,phase)
+        # self.logger.summary_scalars({'IR':get_lr(optimizerG)},epoch,'IR',phase)
                 
     # def deploy3dresult(self):
     #     # _,_,cha,zsize,xysize,yxsize = v_la.shape

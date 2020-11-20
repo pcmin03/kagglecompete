@@ -43,15 +43,23 @@ class Logger(object):
                 self.writer.add_images(str(img),images_dict[img],step,dataformats='NHWC')
             elif images_dict[img].ndim == 3:
                 self.writer.add_image(str(img),images_dict[img],step,dataformats='HWC')
-
+    
+    def list_summary_scalars(self,scalar_list,step,phase='valid'):
+        ### list of scaler ###
+        Mavg_dict,IOU_scalar,precision_scalar,recall_scalr,F1score_scalar = scalar_list
+        
+        self.summary_scalars(IOU_scalar,step,'IOU',phase)
+        self.summary_scalars(precision_scalar,step,'precision',phase)
+        self.summary_scalars(recall_scalr,step,'recall',phase)
+        self.summary_scalars(F1score_scalar,step,'F1',phase)        
+        self.summary_scalars(Mavg_dict,step,'mean',phase)
+        
+            
     def summary_scalars(self,scalar_dict,step,tag='loss',phase='valid'):
         ### list of scaler ###
         for i, scalar in enumerate(scalar_dict):
             if tag in scalar:
                 self.writer.add_scalar(str(tag)+'/'+str(phase)+str(scalar),scalar_dict[scalar],step)
-
-            # elif 'loss' in scalar:
-            #     self.writer.add_scalar(str(phase)+'/loss/'+str(scalar),scalar_dict[scalar],step)
             else:
                 self.writer.add_scalar(str(phase)+'/'+str(scalar),scalar_dict[scalar],step)
             
@@ -97,7 +105,7 @@ class Logger(object):
                 image_dict[img] = np.transpose(image_dict[img],(1,2,3,0))[...,0:1]
 
             # image_dict[img] = np.swapaxes(image_dict[img],0,-1)[...,0:1]
-            # image_dict['_input'] = cv2.normalize(image_dict['_input'],(768,1024), 0, 65535 , cv2.NORM_MINMAX).astype('uint16')
+            # image_dict['_input'] = cv2.normalize(image_dict['_input'],(768,1024), 0, 255 , cv2.NORM_MINMAX).astype('uint8')
         
             print(image_dict[img].shape,img)
         return image_dict 
@@ -112,47 +120,6 @@ class Logger(object):
             print("================testing=====================")
             for i, val in enumerate(vlaues):
                 print(f"========{val}=>{vlaues[val]}")
-
-    def make_full_image(self,imagename):
-        re_totals = natsorted(glob.glob(self.log_dir+imagename+'*'))
-
-        sample = skimage.io.imread(re_totals[0])
-        
-        width,_,_ = sample.shape
-        interval = int(1024/width)
-        re_t = []
-        re_total = []
-
-        for i in range(len(re_totals)):
-            img = skimage.io.imread(re_totals[i])
-            re_total.append(img)
-            if (i+1)%(int(interval*interval))==0:
-                re_t.append(np.array(re_total))
-                re_total = []
-        re_total = np.array(re_t)
-
-        new_image = []
-        # new_image = dict()
-        for i in range(len(re_total)):
-            himag =[]
-            one_image=re_total[i]
-            
-            for j in range(len(one_image)//interval):
-                full_image = cv2.hconcat([one_image[j*interval+num] for num in range(interval)])
-                # full_image=cv2.hconcat([one_image[j*4],one_image[j*4+1],one_image[j*4+2],one_image[j*4+3]])
-                himag.append(full_image)
-                if j==0:
-                    continue
-                elif j%(interval-1) == 0:
-                    new=np.array(himag)
-
-                    full_image2=cv2.vconcat([new[num] for num in range(interval)])
-                    # full_image2=cv2.vconcat([new[0],new[1],new[2],new[3]])
-                    # new_image.update({'full_image'+str(i):full_image2})
-                    new_image.append(full_image2)
-
-                
-        imsave(self.log_dir+imagename+'_full_image.tif',np.array(new_image))
 
     def save_csv_file(self,Class,name):
         import pandas

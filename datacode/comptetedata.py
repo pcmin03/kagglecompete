@@ -29,6 +29,8 @@ from sklearn.preprocessing import MultiLabelBinarizer, OneHotEncoder
 import datacode.custom_transforms as custom_transforms
 import fastremap
 
+import albumentations as A
+from albumentations.pytorch.transforms import ToTensorV2
 # import imgaug.augmenters as iaa
 # aug = iaa.CoarseDropout((0.0, 0.05), size_percent=(0.02, 0.25))
 
@@ -39,17 +41,15 @@ class mydataset_2d(Dataset):
         #             # albumentations.pytorch.transforms.ToTensorV2(),
         #             albumentations.Normalize((0.31789994),(0.19416974))])
         
-        self.Ltransforms =  torchvision.transforms.Compose([
-                        torchvision.transforms.ToTensor(),
-                        torchvision.transforms.Normalize((0.31789994),(0.19416974))])
+        self.Ltransforms =  A.Compose([
+                        A.Normalize((0.31789994),(0.19416974),p=1.0),
+                        ToTensorV2(p=1.0)])
 
         self.T_transform = albumentations.RandomCrop(256, 256)
         self.centercrop = albumentations.CenterCrop(768,1024 )
         self.images = imageDir
         self.labels = labelDir
         self.phase = phase
-
-
 
     def __len__(self):
         return len(self.images)

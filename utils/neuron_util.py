@@ -47,7 +47,7 @@ def EROSION(image,sigma=6):
 
 def changecolor(predict,nc=4):
     # images = skimage.color.gray2rgb(images)
-    return skimage.color.label2rgb(predict)
+    return skimage.color.label2rgb(predict,bg_label=0)
 
 def decode_segmap(images, nc=4,name='full_4'):
 

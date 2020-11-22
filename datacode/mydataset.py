@@ -26,7 +26,6 @@ def divide_kfold(Datadir,args):
     labels = np.array(natsorted(glob(labelDir+'*')))
     train,valid = dict(),dict()
     
-
     if args.cross_validation == True:
         # total_label = []
         # for label in labels: 
@@ -74,7 +73,7 @@ def select_data(args):
 
 def make_dataset(trainset,validset,args): 
     num_workers = 16
-    
+    print(len(trainset[0]),len(trainset[1]),'len dataset')
     from .comptetedata import mydataset_2d
     MyDataset = {'train': DataLoader(mydataset_2d(trainset[0],validset[0],args.patchsize,phase='train'),
                     args.batch_size, 

@@ -91,7 +91,7 @@ class mydataset_2d(Dataset):
             if phase=='train':  
                 im_size = patch_size
                 ch_size = int(lab.shape[0])
-
+                # (0.31789994),(0.19416974))
                 if '3d' in self.dataname:
                     img = img[4:-3]
                     lab = lab[4:-3]

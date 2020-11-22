@@ -21,13 +21,20 @@ class AverageMeter(object):
         self.F1score_scalar = dict()
 
     def update_dict(self,result_dicts):
-
+        
         for i in range(self.num_class):
             self.IOU_scalar.update({'IOU_'+str(i):result_dicts['IOU'][i]})
             self.precision_scalar.update({'precision_'+str(i):result_dicts['precision'][i]})
             self.recall_scalr.update({'recall_'+str(i):result_dicts['recall'][i]})
             self.F1score_scalar.update({'F1_'+str(i):result_dicts['F1'][i]})
-    
+        
+        self.Mavg_dict = {'MIOU':np.nanmean(result_dicts['IOU']),
+                'Mprecision':np.nanmean(result_dicts['precision']),
+                'Mrecall':np.nanmean(result_dicts['recall']),
+                'MF1':np.nanmean(result_dicts['F1'])}
+
+        return [self.Mavg_dict,self.IOU_scalar,self.precision_scalar,self.recall_scalr,self.F1score_scalar]
+
     def update(self, val, n=1):
         self.val = val
         self.sum += val * n
@@ -102,12 +109,11 @@ class Evaluator(object):
         # Acc_class,Class_ACC,wo_back_ACC = self.Pixel_Accuracy_Class()
         self.Class_precision, self.Class_recall,self.Class_F1score = self.Class_F1_score()
         # _, _,Class_Fbetascore = self.Class_Fbeta_score(beta=betavalue)
-
+        
         total_dict = {'IOU':self.Class_IOU,
                     'precision':self.Class_precision,
                     'recall':self.Class_recall,
                     'F1':self.Class_F1score}
-
         return total_dict
 
         # total_dict = {'IOU':Class_IOU}

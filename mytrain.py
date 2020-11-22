@@ -48,23 +48,23 @@ def main(args):
 
     #select loss
     loss_list,lossname = select_loss(args)
-    print(lossname,'1111')
+    
     # logger 
     main_path, valid_path = make_path(args)
-    print(main_path,valid_path,'1111')
+    
     #set log
     logger = Logger(main_path,valid_path+lossname,delete=args.deleteall)
 
     # continuous training
     if os.path.exists(logger.log_dir+"lastsave_models{}.pth"):
         checkpoint = torch.load(logger.log_dir +"lastsave_models{}.pth")
-        gen.load_state_dict(checkpoint['gen_model'])
+        model.load_state_dict(checkpoint['gen_model'])
 
     #import trainer
     Learner = Trainer(model, MyDataset,loss_list,logger,args,device)
     
     Learner.train()
-    # Trainer.test()
+    Trainer.test()
 
 
 if __name__ == '__main__': 
